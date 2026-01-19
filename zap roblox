@@ -1,0 +1,120 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Remote Prompter Universal",
+   LoadingTitle = "By Svrna",
+   LoadingSubtitle = "Universal Edition",
+   ConfigurationSaving = {
+      Enabled = false,
+      FolderName = nil,
+      FileName = nil
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   KeySystem = false,
+})
+
+local Tab = Window:CreateTab("Main", 4483362458)
+
+local TargetID = nil
+local BruteforceEnabled = false
+local AntiAFKEnabled = false
+local VirtualUser = game:GetService("VirtualUser")
+
+local Blacklist = {
+    "kill", "die", "reset", "respawn", "loadcharacter", "damage", "death", 
+    "kick", "ban", "admin", "teleport", "spawn", "destroy"
+}
+
+local function IsSafe(RemoteName)
+    local lowerName = string.lower(RemoteName)
+    for _, badWord in ipairs(Blacklist) do
+        if string.find(lowerName, badWord) then
+            return false 
+        end
+    end
+    return true 
+end
+
+Tab:CreateInput({
+   Name = "UGC Limited Item ID (Optional)",
+   PlaceholderText = "Leave empty to auto-fire...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      TargetID = tonumber(Text)
+   end,
+})
+
+Tab:CreateToggle({
+   Name = "Loop Bruteforce (Safe Mode)",
+   CurrentValue = false,
+   Flag = "BruteforceToggle",
+   Callback = function(Value)
+      BruteforceEnabled = Value
+
+      if Value then
+         task.spawn(function()
+            while BruteforceEnabled do
+                local player = game.Players.LocalPlayer
+                local count = 0
+                local descendants = game:GetDescendants()
+                
+                for _, v in pairs(descendants) do
+                    if not BruteforceEnabled then break end
+
+                    if (v:IsA("RemoteEvent") or v:IsA("UnreliableRemoteEvent") or v:IsA("RemoteFunction")) then
+                        if IsSafe(v.Name) then
+                            count = count + 1
+                            
+                            if v:IsA("RemoteFunction") then
+                                task.spawn(function() 
+                                    if TargetID then
+                                        pcall(function() v:InvokeServer(TargetID) end)
+                                        pcall(function() v:InvokeServer(TargetID, player) end)
+                                    else
+                                        pcall(function() v:InvokeServer() end)
+                                        pcall(function() v:InvokeServer(player) end)
+                                        pcall(function() v:InvokeServer(true) end)
+                                    end
+                                end)
+                            else
+                                if TargetID then
+                                    pcall(function() v:FireServer(TargetID) end)
+                                    pcall(function() v:FireServer(TargetID, player) end)
+                                else
+                                    pcall(function() v:FireServer() end)
+                                    pcall(function() v:FireServer(player) end)
+                                    pcall(function() v:FireServer(true) end)
+                                end
+                            end
+                            
+                            if count % 50 == 0 then
+                                task.wait()
+                            end
+                        end
+                    end
+                end
+                task.wait(1)
+            end
+         end)
+      end
+   end,
+})
+
+Tab:CreateToggle({
+   Name = "Anti AFK",
+   CurrentValue = false,
+   Callback = function(Value)
+      AntiAFKEnabled = Value
+   end,
+})
+
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    if AntiAFKEnabled then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end
+end)
